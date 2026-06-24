@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SecureSOC AI — Inject Mode</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; background: #0f1117; }
+    .dash { background: #0f1117; font-family: 'Inter', sans-serif; color: #c2c0b6; display: flex; flex-direction: column; min-height: 100vh; }
+    .topbar { background: #1a1d27; border-bottom: 0.5px solid #2a2d3a; padding: 0 16px; height: 48px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; position: relative; }
+    .logo { font-size: 15px; font-weight: 500; color: #e8e6dc; letter-spacing: -0.2px; }
+    .logo span { color: #5b9bd5; }
+    .modetabs { display: flex; gap: 4px; position: absolute; left: 50%; transform: translateX(-50%); }
+    .tab { padding: 6px 14px; border-radius: 8px; font-size: 13px; cursor: pointer; border: 0.5px solid #2a2d3a; background: transparent; color: #7a7870; font-family: 'Inter', sans-serif; text-decoration: none; }
+    .tab.active { background: #1e2d42; color: #5b9bd5; border-color: #2d4a6e; font-weight: 500; }
+    .topright { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #7a7870; }
+    .live-dot { width: 8px; height: 8px; border-radius: 50%; background: #4a8c2a; display: inline-block; }
+    .main { display: grid; grid-template-columns: 340px 1fr; gap: 10px; padding: 10px; flex: 1; }
+    .left { display: flex; flex-direction: column; gap: 10px; }
+    .right { display: flex; flex-direction: column; gap: 10px; }
+    .card { background: #1a1d27; border: 0.5px solid #2a2d3a; border-radius: 10px; padding: 12px 14px; }
+    .card-title { font-size: 11px; font-weight: 500; color: #4a4845; text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 10px; }
+    .section-label { font-size: 12px; font-weight: 500; color: #7a7870; margin-bottom: 8px; }
+    .attack-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+    .attack-btn { background: #13151f; border: 0.5px solid #2a2d3a; border-radius: 8px; padding: 10px 12px; cursor: pointer; font-family: 'Inter', sans-serif; text-align: left; transition: border-color 0.15s; }
+    .attack-btn.selected { border-color: #2d4a6e; background: #1e2d42; }
+    .attack-btn-label { font-size: 12px; font-weight: 500; margin-bottom: 2px; }
+    .attack-btn-desc { font-size: 11px; color: #4a4845; line-height: 1.4; }
+    .ddos-col  { color: #e87070; }
+    .dos-col   { color: #c9841a; }
+    .brute-col { color: #e8a840; }
+    .port-col  { color: #9080e0; }
+    .web-col   { color: #5b9bd5; }
+    .inf-col   { color: #2a8a5a; }
+    .inject-btn { width: 100%; padding: 10px; border-radius: 8px; background: #1e2d42; border: 0.5px solid #2d4a6e; color: #5b9bd5; font-size: 13px; font-weight: 500; font-family: 'Inter', sans-serif; cursor: pointer; margin-bottom: 12px; }
+    .inject-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .info-row { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 0.5px solid #1e2130; font-size: 12px; }
+    .info-row:last-child { border-bottom: none; }
+    .info-label { color: #7a7870; }
+    .info-val { color: #c2c0b6; font-weight: 500; }
+    .info-val.red   { color: #e87070; }
+    .info-val.green { color: #5aad3a; }
+    .info-val.amber { color: #c9841a; }
+    .result-box { background: #13151f; border: 0.5px solid #2a2d3a; border-radius: 8px; padding: 12px; margin-bottom: 10px; }
+    .result-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .result-title { font-size: 13px; font-weight: 500; color: #e8e6dc; }
+    .result-badge { font-size: 11px; font-weight: 500; padding: 2px 10px; border-radius: 20px; }
+    .rb-attack  { background: #3a1515; color: #e87070; border: 0.5px solid #5a2020; }
+    .rb-normal  { background: #152a15; color: #5aad3a; border: 0.5px solid #1e4020; }
+    .rb-pending { background: #1a1d27; color: #4a4845; border: 0.5px solid #2a2d3a; }
+    .result-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .result-stat { background: #1a1d27; border-radius: 6px; padding: 8px 10px; border: 0.5px solid #2a2d3a; }
+    .result-stat-label { font-size: 10px; color: #4a4845; margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .result-stat-val { font-size: 16px; font-weight: 500; }
+    .feat-row { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; }
+    .feat-name { width: 130px; color: #9a9890; flex-shrink: 0; font-size: 11px; }
+    .feat-bar { flex: 1; height: 5px; background: #1e2130; border-radius: 3px; overflow: hidden; }
+    .feat-fill-pos { height: 100%; background: #c94040; border-radius: 3px; }
+    .feat-fill-neg { height: 100%; background: #3a6ab0; border-radius: 3px; }
+    .feat-score { width: 36px; text-align: right; color: #4a4845; font-size: 11px; }
+    .log-box { background: #13151f; border: 0.5px solid #2a2d3a; border-radius: 8px; padding: 10px 12px; font-size: 11px; line-height: 1.8; max-height: 180px; overflow-y: auto; }
+    .log-box::-webkit-scrollbar { width: 4px; }
+    .log-box::-webkit-scrollbar-track { background: #13151f; }
+    .log-box::-webkit-scrollbar-thumb { background: #2a2d3a; border-radius: 2px; }
+    .log-line { color: #4a4845; }
+    .log-line.alert { color: #e87070; }
+    .log-line.info  { color: #5b9bd5; }
+    .log-line.ok    { color: #5aad3a; }
+    .fill { flex: 1; background: #0f1117; }
+    .warn-box { background: #2a2010; border: 0.5px solid #5a4010; border-radius: 8px; padding: 10px 14px; display: flex; gap: 10px; align-items: flex-start; }
+    .warn-dot { width: 8px; height: 8px; border-radius: 50%; background: #c9841a; flex-shrink: 0; margin-top: 3px; }
+    .warn-text { font-size: 12px; color: #e8a840; font-weight: 500; }
+    .warn-sub { font-size: 11px; color: #8a6020; margin-top: 2px; }
+  </style>
+</head>
+<body>
+<div class="dash">
+  <div class="topbar">
+    <div class="logo">Secure<span>SOC</span> AI</div>
+    <div class="modetabs">
+      <a class="tab" href="/">Analyst + Manager</a>
+      <a class="tab active" href="/inject">Inject mode</a>
+      <a class="tab" href="/preprocessing">Preprocessing</a>
+      <a class="tab" href="/comparison">Model Comparison</a>
+    </div>
+    <div class="topright">
+      <span class="live-dot"></span>
+      <span>Demo mode — inject an attack</span>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="left">
+      <div class="warn-box">
+        <div class="warn-dot"></div>
+        <div>
+          <div class="warn-text">Demo mode active</div>
+          <div class="warn-sub">Injected attacks are simulated using CICIDS2017 samples. No real network traffic is affected.</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Select attack type</div>
+        <div class="attack-grid">
+          <div class="attack-btn selected" data-attack="DDoS">
+            <div class="attack-btn-label ddos-col">DDoS</div>
+            <div class="attack-btn-desc">Distributed denial of service flood</div>
+          </div>
+          <div class="attack-btn" data-attack="DoS">
+            <div class="attack-btn-label dos-col">DoS</div>
+            <div class="attack-btn-desc">Single-source denial of service</div>
+          </div>
+          <div class="attack-btn" data-attack="Brute Force">
+            <div class="attack-btn-label brute-col">Brute Force</div>
+            <div class="attack-btn-desc">Repeated login attempts</div>
+          </div>
+          <div class="attack-btn" data-attack="PortScan">
+            <div class="attack-btn-label port-col">PortScan</div>
+            <div class="attack-btn-desc">Network reconnaissance scan</div>
+          </div>
+          <div class="attack-btn" data-attack="Web Attack">
+            <div class="attack-btn-label web-col">Web Attack</div>
+            <div class="attack-btn-desc">SQL injection / XSS</div>
+          </div>
+          <div class="attack-btn" data-attack="Infiltration">
+            <div class="attack-btn-label inf-col">Infiltration</div>
+            <div class="attack-btn-desc">Internal lateral movement</div>
+          </div>
+        </div>
+        <button class="inject-btn" id="inject-btn">Inject DDoS attack</button>
+        <div class="section-label">Injection settings</div>
+        <div class="info-row"><span class="info-label">Selected attack</span><span class="info-val red" id="selected-attack-val">DDoS</span></div>
+        <div class="info-row"><span class="info-label">Sample source</span><span class="info-val">CICIDS2017</span></div>
+        <div class="info-row"><span class="info-label">Model</span><span class="info-val">Random Forest</span></div>
+        <div class="info-row"><span class="info-label">Status</span><span class="info-val green" id="inject-status">Ready</span></div>
+      </div>
+      <div class="card">
+        <div class="card-title">System log</div>
+        <div class="log-box" id="log-box">
+          <div class="log-line ok">[--:--:--] System ready. Awaiting injection.</div>
+        </div>
+      </div>
+      <div class="fill"></div>
+    </div>
+
+    <div class="right">
+      <div class="card">
+        <div class="card-title">Detection result</div>
+        <div class="result-box">
+          <div class="result-header">
+            <div class="result-title" id="result-title">No injection yet</div>
+            <span class="result-badge rb-pending" id="result-badge">Awaiting input</span>
+          </div>
+          <div class="result-grid">
+            <div class="result-stat">
+              <div class="result-stat-label">Confidence</div>
+              <div class="result-stat-val" id="result-confidence" style="color:#4a4845">—</div>
+            </div>
+            <div class="result-stat">
+              <div class="result-stat-label">Model used</div>
+              <div class="result-stat-val" id="result-model" style="color:#5b9bd5;font-size:12px">Random Forest</div>
+            </div>
+            <div class="result-stat">
+              <div class="result-stat-label">BiLSTM verdict</div>
+              <div class="result-stat-val" id="result-bilstm" style="color:#4a4845;font-size:13px">Pending</div>
+            </div>
+            <div class="result-stat">
+              <div class="result-stat-label">Agreement</div>
+              <div class="result-stat-val" id="result-agreement" style="color:#4a4845;font-size:13px">Pending</div>
+            </div>
+            <div class="result-stat">
+              <div class="result-stat-label">Whitelist</div>
+              <div class="result-stat-val" id="result-whitelist" style="color:#4a4845;font-size:13px">Pending</div>
+            </div>
+          </div>
+        </div>
+        <div class="section-label">Why was this flagged?</div>
+        <div id="result-features">
+          <div style="font-size:12px;color:#4a4845">Run an injection to see SHAP feature explanation.</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Model agreement</div>
+        <div class="info-row"><span class="info-label">Random Forest says</span><span class="info-val" id="agree-rf" style="color:#4a4845">—</span></div>
+        <div class="info-row"><span class="info-label">DNN-BiLSTM says</span><span class="info-val" id="agree-bilstm" style="color:#4a4845">—</span></div>
+        <div class="info-row"><span class="info-label">Verdict</span><span class="info-val" id="agree-verdict" style="color:#4a4845">—</span></div>
+        <div class="info-row"><span class="info-label">Added to queue</span><span class="info-val" id="agree-queued" style="color:#4a4845">—</span></div>
+      </div>
+      <div class="fill"></div>
+    </div>
+  </div>
+</div>
+<script>
+let selectedAttack = 'DDoS';
+
+function nowStr() {
+  return new Date().toTimeString().slice(0, 8);
+}
+
+function addLog(text, type) {
+  const box = document.getElementById('log-box');
+  const line = document.createElement('div');
+  line.className = 'log-line ' + type;
+  line.textContent = text;
+  box.appendChild(line);
+  box.scrollTop = box.scrollHeight;
+}
+
+document.querySelectorAll('.attack-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.attack-btn').forEach(b => b.classList.remove('selected'));
+    this.classList.add('selected');
+    selectedAttack = this.dataset.attack;
+    document.getElementById('inject-btn').textContent = 'Inject ' + selectedAttack + ' attack';
+    document.getElementById('selected-attack-val').textContent = selectedAttack;
+  });
+});
+
+document.getElementById('inject-btn').addEventListener('click', function() {
+  const btn = this;
+  btn.disabled = true;
+  document.getElementById('inject-status').textContent = 'Running...';
+  document.getElementById('inject-status').className = 'info-val amber';
+
+  const t = nowStr();
+  addLog('[' + t + '] ' + selectedAttack + ' sample selected from CICIDS2017.', 'info');
+  addLog('[' + t + '] Passing sample through RF model...', 'info');
+
+  fetch('/api/inject', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ attack_type: selectedAttack })
+  })
+  .then(res => res.json())
+  .then(data => {
+    const detected = data.rf_prediction === 'Attack';
+    const confColor = detected ? '#e87070' : '#5aad3a';
+
+    // Detection result box
+    document.getElementById('result-title').textContent = selectedAttack + ' — Injected sample';
+    const badge = document.getElementById('result-badge');
+    badge.textContent = detected ? 'Attack detected' : 'No attack detected';
+    badge.className = 'result-badge ' + (detected ? 'rb-attack' : 'rb-normal');
+
+    // Stats
+    const confEl = document.getElementById('result-confidence');
+    confEl.textContent = data.rf_confidence + '%';
+    confEl.style.color = confColor;
+    document.getElementById('result-model').textContent = 'Random Forest';
+
+    const resultBilstm = document.getElementById('result-bilstm');
+    if (data.bilstm_prediction !== null && data.bilstm_prediction !== undefined) {
+      resultBilstm.textContent = data.bilstm_prediction + ' (' + data.bilstm_confidence + '%)';
+      resultBilstm.style.color = data.bilstm_prediction === 'Attack' ? '#e87070' : '#5aad3a';
+    } else {
+      resultBilstm.textContent = 'Pending';
+      resultBilstm.style.color = '#4a4845';
+    }
+
+    const resultAgreement = document.getElementById('result-agreement');
+    if (data.agreement === 'Both Agree') {
+      resultAgreement.textContent = 'Both Agree';
+      resultAgreement.style.color = '#5aad3a';
+    } else if (data.agreement === 'Disagree') {
+      resultAgreement.textContent = 'Disagree';
+      resultAgreement.style.color = '#c9841a';
+    } else {
+      resultAgreement.textContent = 'Pending';
+      resultAgreement.style.color = '#4a4845';
+    }
+
+    const resultWhitelist = document.getElementById('result-whitelist');
+    if (data.whitelist_result === 'Suppressed') {
+      resultWhitelist.textContent = 'Suppressed';
+      resultWhitelist.style.color = '#5aad3a';
+    } else if (data.whitelist_result === 'Confirmed') {
+      resultWhitelist.textContent = 'Confirmed';
+      resultWhitelist.style.color = '#e87070';
+    } else if (data.whitelist_result === 'N/A') {
+      resultWhitelist.textContent = 'N/A';
+      resultWhitelist.style.color = '#4a4845';
+    } else {
+      resultWhitelist.textContent = 'Pending';
+      resultWhitelist.style.color = '#4a4845';
+    }
+
+    // SHAP features
+    const featContainer = document.getElementById('result-features');
+    featContainer.innerHTML = '';
+    const maxScore = Math.max(...data.features.map(f => Math.abs(f.score)));
+    data.features.forEach(f => {
+      const width = maxScore > 0 ? Math.round((Math.abs(f.score) / maxScore) * 100) : 0;
+      const fillClass = f.score >= 0 ? 'feat-fill-pos' : 'feat-fill-neg';
+      const sign = f.score >= 0 ? '+' : '';
+      featContainer.innerHTML += `
+        <div class="feat-row">
+          <span class="feat-name">${f.name}</span>
+          <div class="feat-bar"><div class="${fillClass}" style="width:${width}%"></div></div>
+          <span class="feat-score">${sign}${f.score}</span>
+        </div>`;
+    });
+
+    // Model agreement
+    const agreeRF = document.getElementById('agree-rf');
+    agreeRF.textContent = data.rf_prediction + ' (' + data.rf_confidence + '%)';
+    agreeRF.className = 'info-val ' + (detected ? 'red' : 'green');
+    agreeRF.style.color = '';
+
+    const agreeBi = document.getElementById('agree-bilstm');
+    if (data.bilstm_prediction !== null && data.bilstm_prediction !== undefined) {
+      agreeBi.textContent = data.bilstm_prediction + ' (' + data.bilstm_confidence + '%)';
+      agreeBi.className = 'info-val ' + (data.bilstm_prediction === 'Attack' ? 'red' : 'green');
+      agreeBi.style.color = '';
+    } else {
+      agreeBi.textContent = 'Pending';
+      agreeBi.className = 'info-val';
+      agreeBi.style.color = '#4a4845';
+    }
+
+    const agreeV = document.getElementById('agree-verdict');
+    if (data.agreement === 'Both Agree') {
+      agreeV.textContent = 'Both Agree';
+      agreeV.className = 'info-val green';
+      agreeV.style.color = '';
+    } else if (data.agreement === 'Disagree') {
+      agreeV.textContent = 'Disagree';
+      agreeV.className = 'info-val amber';
+      agreeV.style.color = '';
+    } else {
+      agreeV.textContent = 'Pending';
+      agreeV.className = 'info-val';
+      agreeV.style.color = '#4a4845';
+    }
+
+    const agreeQ = document.getElementById('agree-queued');
+    agreeQ.textContent = 'Yes — ' + data.time;
+    agreeQ.className = 'info-val green';
+    agreeQ.style.color = '';
+
+    // Status
+    document.getElementById('inject-status').textContent = 'Done';
+    document.getElementById('inject-status').className = 'info-val green';
+    setTimeout(() => {
+      document.getElementById('inject-status').textContent = 'Ready';
+      document.getElementById('inject-status').className = 'info-val green';
+    }, 3000);
+
+    // Log
+    if (detected) {
+      addLog('[' + data.time + '] ATTACK DETECTED — ' + selectedAttack + ' (' + data.rf_confidence + '% confidence)', 'alert');
+    } else {
+      addLog('[' + data.time + '] No attack detected — ' + selectedAttack + ' (' + data.rf_confidence + '%)', 'ok');
+    }
+    addLog('[' + data.time + '] Alert added to queue.', 'ok');
+    if (data.bilstm_prediction !== null && data.bilstm_prediction !== undefined) {
+      let wlSuffix = '';
+      if (data.whitelist_result && data.whitelist_result !== 'N/A') {
+        wlSuffix = ' — Whitelist: ' + data.whitelist_result;
+      }
+      addLog('[' + data.time + '] BiLSTM verdict: ' + data.bilstm_prediction + ' (' + data.bilstm_confidence + '%)' + wlSuffix, 'info');
+    } else {
+      addLog('[' + data.time + '] BiLSTM verdict: Pending — not connected.', 'info');
+    }
+
+    btn.disabled = false;
+  })
+  .catch(() => {
+    addLog('[' + nowStr() + '] Error contacting server.', 'alert');
+    document.getElementById('inject-status').textContent = 'Error';
+    document.getElementById('inject-status').className = 'info-val red';
+    btn.disabled = false;
+  });
+});
+</script>
+</body>
+</html>
